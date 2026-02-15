@@ -323,6 +323,33 @@ LIMIT 5
 
 ---
 
+## Section E — Execution Reality Check
+
+### What would you ship in 2 weeks?
+
+- JWT authentication and per-tenant API key management.
+- Alembic migrations for safe schema evolution.
+- Background document processing via task queue (arq or Celery) — large documents currently block the request.
+- Per-tenant rate limiting at the application layer.
+- IVFFlat or HNSW index on the pgvector embedding column for sub-linear search at scale.
+- Basic admin endpoint for listing documents and usage statistics per tenant.
+
+### What would you explicitly NOT build yet?
+
+- Fine-tuned embedding models or custom LLMs — the generic models are sufficient at current scale.
+- Multi-step agent workflows or tool-calling chains — adds complexity without clear ROI for a knowledge Q&A use case.
+- Real-time document sync from external sources (Google Drive, Confluence) — requires OAuth flows and webhook infrastructure.
+- Multi-language support — English-only is acceptable for initial deployment.
+- PDF/DOCX parsing — plain text ingestion covers the core use case; file format support is a feature, not architecture.
+
+### What risks worry you most?
+
+1. **Free-tier LLM reliability** — OpenRouter's free `gemma-3-12b-it` has no SLA. Rate limits or downtime would degrade the entire `/ask` pipeline. Mitigation: add a fallback model or paid tier.
+2. **pgvector linear scan at scale** — without an HNSW or IVFFlat index, vector search degrades linearly with chunk count. At >100K chunks per tenant, latency becomes unacceptable.
+3. **No authentication** — the API is open. Anyone with a tenant UUID can read that tenant's knowledge base. Must be deployed behind an API gateway or have auth added before any real usage.
+4. **Distance threshold tuning** — the 0.35 cosine distance threshold is a heuristic. Too strict = excessive refusals (bad UX). Too loose = irrelevant context reaches the LLM (hallucination risk). Requires ongoing evaluation with real user queries.
+5. **Single embedding provider** — Gemini API is the sole embedding source. If Google's API goes down or changes pricing, there is no fallback. Embedding migration (re-embedding all chunks) is expensive.
+
 ## 8. Assumptions & Trade-offs
 
 ### Assumptions
